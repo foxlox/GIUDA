@@ -1,5 +1,5 @@
 # GIUDA
-Ask a TGS on behalf of another user without password
+GET a TGS on behalf of another user without password
 
 Scenario: you are Local Administrator and there is a logged User you want to Impersonate!
 Goal: From Local Admin to Domain Admin with Kerberos TGS
@@ -24,5 +24,5 @@ Required: Local Administrator and a Domain Admin Logged (or Disconnected). In th
 ![image](https://github.com/foxlox/GIUDA/assets/28823598/5bef5372-f49c-4591-886e-7712158538c6)
 
 
-#Thanks
+# Thanks
 Thank you to ewan22, he does a very powerful set of Pascal Units for AD
