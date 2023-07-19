@@ -1,6 +1,7 @@
 # GIUDA
 Ask a TGS on behalf of another user without password
-Scenario: you are Local Administrator and there is a logged a User you want to Impersonate!
+
+Scenario: you are Local Administrator and there is a logged User you want to Impersonate!
 
 Required: Local Administrator and a Domain Admin Logged (or Disconnected). In this guide the Domain Admin User is CALIPENDULA\fagiolo
 
@@ -22,3 +23,6 @@ Required: Local Administrator and a Domain Admin Logged (or Disconnected). In th
 7. use PSSession to log on the Domain Controller
 ![image](https://github.com/foxlox/GIUDA/assets/28823598/5bef5372-f49c-4591-886e-7712158538c6)
 
+
+#Thanks
+Thank you to ewan22, he does a very powerful set of Pascal Units for AD
