@@ -1,8 +1,8 @@
 # GIUDA
 Ask a TGS on behalf of another user without password
+Scenario: you are Local Administrator and there is a logged a User you want to Impersonate!
 
-
-Required: Local Administrator and a Domain Admin Logged. In this guide the Domain Admin User is CALIPENDULA\fagiolo
+Required: Local Administrator and a Domain Admin Logged (or Disconnected). In this guide the Domain Admin User is CALIPENDULA\fagiolo
 
 1. ask to GIUDA for a shell as SYSTEM
 2. GIUDA -runaslsass            or
