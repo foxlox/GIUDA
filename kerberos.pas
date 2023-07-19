@@ -1,6 +1,6 @@
 unit kerberos;
 
-{$mode dai}
+{$mode delphi}
 
 interface
 
