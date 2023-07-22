@@ -7,7 +7,7 @@ Required: Local Administrator and a Domain Admin Logged (or Disconnected). In th
 
 1. ask to GIUDA for a shell as SYSTEM
 2. GIUDA -runaslsass            or
-3. GIUDA -runaspid:PID          (a NT AUTHORITY\SYSTEM's PID, enumerate by yourself)
+3. GIUDA -runaspid:PID          (a NT AUTHORITY\SYSTEM's PID, enumerate by yourself) you need a PID running with SeTcpPrivilege, search well and try also WINLOGON's PID!
 ![image](https://github.com/foxlox/GIUDA/assets/28823598/a04903ea-de62-4f57-951f-655c45ab26e4)
 
 
