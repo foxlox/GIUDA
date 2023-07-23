@@ -2,6 +2,7 @@
 GET a TGS on behalf of another user without password
 
 Scenario: you are Local Administrator and there is a logged User you want to Impersonate!
+Chain: SeTcbPrivilege allows you to read LSA storage, extract the SESSION KEY from TGT, and forge a request asking for a TGS; You must use LUID instead of Username.
 Goal: From Local Admin to Domain Admin with Kerberos TGS
 Required: Local Administrator and a Domain Admin Logged (or Disconnected). In this guide the Domain Admin User is CALIPENDULA\fagiolo
 
@@ -25,4 +26,4 @@ Required: Local Administrator and a Domain Admin Logged (or Disconnected). In th
 
 
 # Thanks
-Thank you to erwan22, he does a very powerful set of Pascal Units for AD. Thx Erwan22, you're really great!
+A very big thanks to Erwan22, he does a very powerful set of Pascal Units for AD. Thx Erwan22, you're really great!
