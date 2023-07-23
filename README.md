@@ -25,4 +25,4 @@ Required: Local Administrator and a Domain Admin Logged (or Disconnected). In th
 
 
 # Thanks
-Thank you to ewan22, he does a very powerful set of Pascal Units for AD
+Thank you to erwan22, he does a very powerful set of Pascal Units for AD. Thx Erwan22, you're really great!
