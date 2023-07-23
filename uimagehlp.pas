@@ -3,7 +3,6 @@ unit uimagehlp;
 
 interface
 
-
 uses
   Classes, SysUtils,windows,
   utils,ntdll,uxor,uadvapi32,System.NetEncoding;

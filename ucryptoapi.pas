@@ -2,6 +2,7 @@ unit ucryptoapi;
 
 {$ifdef fpc}{$mode delphi}{$endif fpc}
 
+
 interface
 
 

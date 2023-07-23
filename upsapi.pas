@@ -2,6 +2,7 @@ unit upsapi;
 
 {$mode delphi}
 
+
 interface
 
 uses

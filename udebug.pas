@@ -1,5 +1,6 @@
-{$mode delphi}
 unit udebug;
+{$mode delphi}
+
 
 interface
 
@@ -75,32 +76,6 @@ type
   SYMBOL_INFO=TSYMBOL_INFO ;
 
 
- {
-function SymLoadModuleEx(hProcess, hFile: THANDLE; ImageName, ModuleName: PAnsiChar; BaseOfDll: INT64;
-  DllSize: DWORD; Data: PMODLOAD_DATA; Flag: DWORD): INT64; stdcall; external DbgHelpDll;
-
-function SymInitialize(aHandle: HMODULE; aUserSearchPath: PChar;
-  aInvadeProcess: Boolean): Boolean; stdcall; external DbgHelpDll;
-
-function SymSetSearchPath(hProcess:HANDLE;SearchPath:pchar) : BOOL; stdcall;external DbgHelpDll;
-
-function SymSetOptions(SymOptions: DWORD): DWORD; stdcall;external DbgHelpDll;
-
-function SymFromName(hProcess: THANDLE; Name: pchar; Symbol: pointer): BOOL; stdcall;external DbgHelpDll;
-
-function SymFromAddr(aHandle: HMODULE;
-  aAdress: int64;
-  aDisplacement: DWORD;
-  aSymbolInfo: Pointer): Boolean; stdcall; external DbgHelpDll;
-
-function SymCleanup(aHandle: HMODULE): Boolean; stdcall; external DbgHelpDll;
-}
-
-{
-function ImageNtHeader(Base: Pointer): PIMAGE_NT_HEADERS; stdcall; external 'dbghelp.dll';
-function ImageRvaToVa(NtHeaders: Pointer; Base: Pointer; Rva: ULONG;
-  LastRvaSection: Pointer): Pointer; stdcall; external 'dbghelp.dll';
-}
 
 function _SymFromName(dllname,symbol:string;var address:nativeuint):boolean;
 function _SymFromAddr(dllname:string;address:nativeuint;var name:string):boolean;

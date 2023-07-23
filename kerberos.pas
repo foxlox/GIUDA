@@ -2,6 +2,7 @@ unit kerberos;
 
 {$mode delphi}
 
+
 interface
 
 uses
@@ -12,8 +13,12 @@ uses
   uadvapi32,usecur32,ucryptoapi,
   winsock,dateutils,{jwanative,}jwantstatus{,jwawintype};
 
+type
+ TKer = string;
+
 const
   	//kerberosPackageName:STRING = {8, 9, MICROSOFT_KERBEROS_NAME_A};
+        g_AuthenticationPackageId_MSV:DWORD = 0;
 	g_AuthenticationPackageId_Kerberos:DWORD = 0;
 	g_isAuthPackageKerberos:BOOL = FALSE;
 	g_hLSA:HANDLE = 0;
@@ -25,6 +30,8 @@ function kuhl_m_kerberos_purge_ticket(logonid:int64=0):NTSTATUS;
 function kuhl_m_kerberos_ask(target:string;export_:bool=false;logonid:int64=0):NTSTATUS;      //aka export
 function kuhl_m_kerberos_tgt(logonid:int64=0):NTSTATUS;
 function kuhl_m_kerberos_list(logonid:int64=0):NTSTATUS;
+function kuhl_m_kerberos_ask_session_key(target:string;export_:bool=false;logonid:int64=0):NTSTATUS;
+function kuhl_m_msv_init:NTSTATUS;
 
 function callback_enumlogonsession(param:pointer=nil):dword;stdcall;
 
@@ -33,9 +40,7 @@ function asktgt(key:tbytes):boolean;
 implementation
 
 
-
- type
-
+type
  PCWCHAR = PWCHAR;
  LSA_OPERATIONAL_MODE=ULONG;
  PLSA_OPERATIONAL_MODE=^LSA_OPERATIONAL_MODE;
@@ -359,14 +364,6 @@ begin
      end;
 end;
 
-{
-function encrypt_time(key,buffer:tbytes):boolean;
-begin
-  //md5 $00008003
-  //ecb 2
-  result:=EnCryptDecrypt(CALG_RC4,$00008003,2,key,buffer,false);
-end;
-}
 
 function kuhl_m_kerberos_decrypt(eType:{KERB_ETYPE_ALGORITHM}ulong; keyUsage:integer; key:tbytes;data:tbytes):tbytes;
 var
@@ -480,6 +477,45 @@ begin
      //log(s);
 end;
 
+function kuhl_m_msv_init:NTSTATUS;
+var
+  status:NTSTATUS;
+  kerberosPackageName:LSA_STRING ;
+  ProcessName:LSA_STRING ;
+  securitymode:LSA_OPERATIONAL_MODE=0;
+  old:boolean;
+begin
+        log('******* kuhl_m_kerberos_init **********');
+
+        ProcessName.Length :=8;
+        ProcessName.MaximumLength :=9;
+        ProcessName.Buffer :='Minlogon' ;
+        //0xC0000041 STATUS_PORT_CONNECTION_REFUSED
+        //0xC000007C STATUS_NO_TOKEN
+        if iselevated=true
+                then
+                begin
+                status:=LsaRegisterLogonProcess(@ProcessName,@g_hLSA,@securitymode);
+                RevertToSelf;
+                end
+                else status := LsaConnectUntrusted(@g_hLSA);
+
+	if status=STATUS_SUCCESS then
+	begin
+                log('LsaLookupAuthenticationPackage...');
+                fillchar(kerberosPackageName ,sizeof(kerberosPackageName),0);
+                kerberosPackageName.Length :=8;
+                kerberosPackageName.MaximumLength :=9;
+                kerberosPackageName.Buffer :='MSV1_0_PACKAGE_NAME' ;
+		status := LsaLookupAuthenticationPackage(g_hLSA, @kerberosPackageName, @g_AuthenticationPackageId_Kerberos);
+                log('status:'+inttohex(status,8));
+                g_isAuthPackageKerberos := status=STATUS_SUCCESS;
+                writeln('ok');
+        end
+        else log('kuhl_m_kerberos_init failed:'+inttohex(status,8),1);
+	result:= status;
+end;
+
 function kuhl_m_kerberos_init:NTSTATUS;
 var
   status:NTSTATUS;
@@ -546,7 +582,7 @@ begin
 
 	 status:= STATUS_HANDLE_NO_LONGER_VALID;
 	//if(g_hLSA && g_isAuthPackageKerberos)
-	            status := LsaCallAuthenticationPackage(g_hLSA, g_AuthenticationPackageId_Kerberos, ProtocolSubmitBuffer, SubmitBufferLength, ProtocolReturnBuffer, ReturnBufferLength, ProtocolStatus);
+	status := LsaCallAuthenticationPackage(g_hLSA, g_AuthenticationPackageId_Kerberos, ProtocolSubmitBuffer, SubmitBufferLength, ProtocolReturnBuffer, ReturnBufferLength, ProtocolStatus);
 	result:= status;
 end;
 
@@ -798,11 +834,13 @@ begin
 			log('Asking for: '+ strpas(pKerbRetrieveRequest^.TargetName.Buffer),1 );
 
 			status := LsaCallKerberosPackage(pKerbRetrieveRequest, szData, @pKerbRetrieveResponse, @szData, @packageStatus);
+                        //writeln(ByteToHexaString (pKerbRetrieveResponse^.Ticket.SessionKey.Value, pKerbRetrieveResponse^.Ticket.SessionKey.Length));
+                        //exit;
 			if status=0 then
 			begin
 				if packageStatus=0 then
 				begin
-					ticket.ServiceName := pKerbRetrieveResponse^.Ticket.ServiceName;
+                                  ticket.ServiceName := pKerbRetrieveResponse^.Ticket.ServiceName;
 					ticket.DomainName := pKerbRetrieveResponse^.Ticket.DomainName;
 					ticket.TargetName := pKerbRetrieveResponse^.Ticket.TargetName;
 					ticket.TargetDomainName := pKerbRetrieveResponse^.Ticket.TargetDomainName;
@@ -817,6 +855,7 @@ begin
                                         ticket.TicketEncType:=pKerbRetrieveResponse^.Ticket.SessionKey.KeyType;
 					ticket.Key.Length := pKerbRetrieveResponse^.Ticket.SessionKey.Length;
 					ticket.Key.Value := pKerbRetrieveResponse^.Ticket.SessionKey.Value;
+
 
 					ticket.TicketFlags := pKerbRetrieveResponse^.Ticket.TicketFlags;
 					ticket.Ticket.Length := pKerbRetrieveResponse^.Ticket.EncodedTicketSize;
@@ -873,9 +912,128 @@ begin
 			freemem(pKerbRetrieveRequest);
 		end
 	end
-	else log('At least /target argument is required (eg: /target:cifs/server.lab.local)\n');
+	else log('At least -msdsspn argument is required (eg: -msdsspn:cifs/DC1)\n');
 	result:= STATUS_SUCCESS;
 end;
+
+(*fox*)
+function kuhl_m_kerberos_ask_session_key(target:string;export_:bool=false;logonid:int64=0):NTSTATUS;
+var
+	status, packageStatus:NTSTATUS;
+        kk:integer=0;
+	skeys,filename:string ;
+        ticketname:PWCHAR = nil;
+	szTarget:PCWCHAR;
+	pKerbRetrieveRequest:PKERB_RETRIEVE_TKT_REQUEST;
+	pKerbRetrieveResponse:PKERB_RETRIEVE_TKT_RESPONSE;
+	ticket:KIWI_KERBEROS_TICKET; // = {0};
+	szData:DWORD;
+	dwTarget:USHORT;
+	isExport:BOOL=false; //kull_m_string_args_byName(argc, argv, L"export", NULL, NULL),
+        isTkt:BOOL=false; //kull_m_string_args_byName(argc, argv, L"tkt", NULL, NULL),
+        isNoCache:BOOL=false; //kull_m_string_args_byName(argc, argv, L"nocache", NULL, NULL);
+begin
+        isexport:=export_;
+        fillchar(ticket,sizeof(ticket),0);
+        szTarget:=pwidechar(widestring(target));
+	if target<>'' then
+	begin
+		dwTarget := (length(szTarget) + 1) * sizeof(widechar);
+                log('dwTarget:'+inttostr(dwTarget));
+
+		szData := sizeof(KERB_RETRIEVE_TKT_REQUEST) + dwTarget;
+                log('szData:'+inttostr(szData));
+
+
+                pKerbRetrieveRequest:=allocmem(szData);
+		if pKerbRetrieveRequest <>nil then
+		begin
+                        if logonid<>0 then
+                           begin
+                           pKerbRetrieveRequest^.LogonId.HighPart  :=_luid(logonid).HighPart ;
+                           pKerbRetrieveRequest^.LogonId.LowPart  :=_luid(logonid).LowPart ;
+                           //verbose('LUID:'+inttohex(LogonId,8));
+                           end;
+			pKerbRetrieveRequest^.MessageType := KerbRetrieveEncodedTicketMessage;
+			pKerbRetrieveRequest^.CacheOptions :=  KERB_RETRIEVE_TICKET_DEFAULT; //isNoCache ? KERB_RETRIEVE_TICKET_DONT_USE_CACHE : KERB_RETRIEVE_TICKET_DEFAULT;
+			pKerbRetrieveRequest^.EncryptionType := KERB_ETYPE_DEFAULT; //KERB_ETYPE_RC4_HMAC_NT; // : kull_m_string_args_byName(argc, argv, L'des', NULL, NULL) ? KERB_ETYPE_DES3_CBC_MD5 : kull_m_string_args_byName(argc, argv, L'aes256', NULL, NULL) ? KERB_ETYPE_AES256_CTS_HMAC_SHA1_96 : kull_m_string_args_byName(argc, argv, L'aes128', NULL, NULL) ? KERB_ETYPE_AES128_CTS_HMAC_SHA1_96 : KERB_ETYPE_DEFAULT;
+			pKerbRetrieveRequest^.TargetName.Length := dwTarget - sizeof(widechar);
+			pKerbRetrieveRequest^.TargetName.MaximumLength  := dwTarget;
+			pKerbRetrieveRequest^.TargetName.Buffer := pointer(nativeuint(pKerbRetrieveRequest) + sizeof(KERB_RETRIEVE_TKT_REQUEST));
+			//RtlCopyMemory(pKerbRetrieveRequest^.TargetName.Buffer, szTarget, pKerbRetrieveRequest^.TargetName.MaximumLength);
+                        copymemory(pKerbRetrieveRequest^.TargetName.Buffer,szTarget,pKerbRetrieveRequest^.TargetName.MaximumLength);
+
+			status := LsaCallKerberosPackage(pKerbRetrieveRequest, szData, @pKerbRetrieveResponse, @szData, @packageStatus);
+                        skeys:=ByteToHexaString (pKerbRetrieveResponse^.Ticket.SessionKey.Value, pKerbRetrieveResponse^.Ticket.SessionKey.Length);
+                        writeln(skeys);
+                        //exit;
+                        //0xC000005E STATUS_NO_LOGON_SERVERS
+			freemem(pKerbRetrieveRequest);
+		end
+	end
+	else log('At least -msdsspn argument is required (eg: -msdsspn:cifs/DC1)\n');
+	result:= STATUS_SUCCESS;
+end;
+
+(*tento di estrarre NTLM*)
+function kuhl_m_ask_msv_key(target:string;export_:bool=false;logonid:int64=0):NTSTATUS;
+var
+	status, packageStatus:NTSTATUS;
+        kk:integer=0;
+	skeys,filename:string ;
+        ticketname:PWCHAR = nil;
+	szTarget:PCWCHAR;
+	pKerbRetrieveRequest:PKERB_RETRIEVE_TKT_REQUEST;
+	pKerbRetrieveResponse:PKERB_RETRIEVE_TKT_RESPONSE;
+	ticket:KIWI_KERBEROS_TICKET; // = {0};
+	szData:DWORD;
+	dwTarget:USHORT;
+	isExport:BOOL=false; //kull_m_string_args_byName(argc, argv, L"export", NULL, NULL),
+        isTkt:BOOL=false; //kull_m_string_args_byName(argc, argv, L"tkt", NULL, NULL),
+        isNoCache:BOOL=false; //kull_m_string_args_byName(argc, argv, L"nocache", NULL, NULL);
+begin
+        isexport:=export_;
+        fillchar(ticket,sizeof(ticket),0);
+        szTarget:=pwidechar(widestring(target));
+	if target<>'' then
+	begin
+		dwTarget := (length(szTarget) + 1) * sizeof(widechar);
+                log('dwTarget:'+inttostr(dwTarget));
+
+		szData := sizeof(KERB_RETRIEVE_TKT_REQUEST) + dwTarget;
+                log('szData:'+inttostr(szData));
+
+
+                pKerbRetrieveRequest:=allocmem(szData);
+		if pKerbRetrieveRequest <>nil then
+		begin
+                        if logonid<>0 then
+                           begin
+                           pKerbRetrieveRequest^.LogonId.HighPart  :=_luid(logonid).HighPart ;
+                           pKerbRetrieveRequest^.LogonId.LowPart  :=_luid(logonid).LowPart ;
+                           //verbose('LUID:'+inttohex(LogonId,8));
+                           end;
+			pKerbRetrieveRequest^.MessageType := KerbRetrieveEncodedTicketMessage;
+			pKerbRetrieveRequest^.CacheOptions :=  KERB_RETRIEVE_TICKET_DEFAULT; //isNoCache ? KERB_RETRIEVE_TICKET_DONT_USE_CACHE : KERB_RETRIEVE_TICKET_DEFAULT;
+			pKerbRetrieveRequest^.EncryptionType := KERB_ETYPE_DEFAULT; //KERB_ETYPE_RC4_HMAC_NT; // : kull_m_string_args_byName(argc, argv, L'des', NULL, NULL) ? KERB_ETYPE_DES3_CBC_MD5 : kull_m_string_args_byName(argc, argv, L'aes256', NULL, NULL) ? KERB_ETYPE_AES256_CTS_HMAC_SHA1_96 : kull_m_string_args_byName(argc, argv, L'aes128', NULL, NULL) ? KERB_ETYPE_AES128_CTS_HMAC_SHA1_96 : KERB_ETYPE_DEFAULT;
+			pKerbRetrieveRequest^.TargetName.Length := dwTarget - sizeof(widechar);
+			pKerbRetrieveRequest^.TargetName.MaximumLength  := dwTarget;
+			pKerbRetrieveRequest^.TargetName.Buffer := pointer(nativeuint(pKerbRetrieveRequest) + sizeof(KERB_RETRIEVE_TKT_REQUEST));
+			//RtlCopyMemory(pKerbRetrieveRequest^.TargetName.Buffer, szTarget, pKerbRetrieveRequest^.TargetName.MaximumLength);
+                        copymemory(pKerbRetrieveRequest^.TargetName.Buffer,szTarget,pKerbRetrieveRequest^.TargetName.MaximumLength);
+
+			status := LsaCallKerberosPackage(pKerbRetrieveRequest, szData, @pKerbRetrieveResponse, @szData, @packageStatus);
+                        skeys:=ByteToHexaString (pKerbRetrieveResponse^.Ticket.SessionKey.Value, pKerbRetrieveResponse^.Ticket.SessionKey.Length);
+                        writeln(skeys);
+                        //exit;
+                        //0xC000005E STATUS_NO_LOGON_SERVERS
+			freemem(pKerbRetrieveRequest);
+		end
+	end
+	else log('At least -msdsspn argument is required (eg: -msdsspn:cifs/DC1)\n');
+	result:= STATUS_SUCCESS;
+end;
+
 
 
 function NT_SUCCESS(Status: NTSTATUS): BOOL;

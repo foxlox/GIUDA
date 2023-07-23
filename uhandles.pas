@@ -2,6 +2,7 @@ unit uhandles;
 
 {$mode objfpc}{$H+}
 
+
 interface
 
 uses windows,ntdll,sysutils,uadvapi32,jwawinuser,jwanative,jwantstatus;
