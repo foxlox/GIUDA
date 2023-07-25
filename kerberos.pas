@@ -2,7 +2,6 @@ unit kerberos;
 
 {$mode delphi}
 
-
 interface
 
 uses
@@ -364,6 +363,14 @@ begin
      end;
 end;
 
+{
+function encrypt_time(key,buffer:tbytes):boolean;
+begin
+  //md5 $00008003
+  //ecb 2
+  result:=EnCryptDecrypt(CALG_RC4,$00008003,2,key,buffer,false);
+end;
+}
 
 function kuhl_m_kerberos_decrypt(eType:{KERB_ETYPE_ALGORITHM}ulong; keyUsage:integer; key:tbytes;data:tbytes):tbytes;
 var

