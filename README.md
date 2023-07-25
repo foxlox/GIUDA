@@ -29,7 +29,7 @@ Required: Local Administrator and a Domain Admin Logged (or Disconnected). In th
 
 
 # Optional
-Optionally you can ask to SAVE the TGS and pass it next or on another Machine (Windows or Linux)
+Optionally you can ask to SAVE the TGS and pass it next or on another Machine
 
 8. ask TGS with -save option. GIUDA'll save a file named TICKET.KIRBI so you can copy it
 ![image](https://github.com/foxlox/GIUDA/assets/28823598/5e7bc1c2-5b8c-4ed1-881e-4d62ed2eea08)
