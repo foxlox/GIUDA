@@ -300,56 +300,6 @@ begin
       end;
    end;
 
-  parampos:=pos('/newhash:',cmdline);
-  if parampos>0 then
-       begin
-       newhash:=copy(cmdline,parampos,255);
-       newhash:=stringreplace(newhash,'/newhash:','',[rfReplaceAll, rfIgnoreCase]);
-       delete(newhash,pos(' ',newhash),255);
-       end;
-  parampos:=pos('/oldpwd:',cmdline);
-  if parampos>0 then
-       begin
-       oldpwd:=copy(cmdline,parampos,255);
-       oldpwd:=stringreplace(oldpwd,'/oldpwd:','',[rfReplaceAll, rfIgnoreCase]);
-       delete(oldpwd,pos(' ',oldpwd),255);
-       end;
-  parampos:=pos('/newpwd:',cmdline);
-  if parampos>0 then
-       begin
-       newpwd:=copy(cmdline,parampos,255);
-       newpwd:=stringreplace(newpwd,'/newpwd:','',[rfReplaceAll, rfIgnoreCase]);
-       delete(newpwd,pos(' ',newpwd),255);
-       end;
-
- parampos:=pos('/server:',cmdline);
-  if parampos>0 then
-       begin
-       server:=copy(cmdline,parampos,255);
-       server:=stringreplace(server,'/server:','',[rfReplaceAll, rfIgnoreCase]);
-       delete(server,pos(' ',server),255);
-       //log(server);
-       end;
-  parampos:=pos('/user:',cmdline);
-      if parampos>0 then
-           begin
-           user:=copy(cmdline,parampos,255);
-           user:=stringreplace(user,'/user:','',[rfReplaceAll, rfIgnoreCase]);
-           delete(user,pos(' ',user),255);
-           //log(user);
-           end;
-
-  parampos:=pos('/changentlm',cmdline);
-  if parampos>0 then
-       begin
-       if oldpwd<>'' then oldhashbyte:=tbyte16(GenerateNTLMHashByte (oldpwd));
-       if newpwd<>'' then newhashbyte:=tbyte16(GenerateNTLMHashByte (newpwd));
-       if newhash<>'' then newhashbyte :=HexaStringToByte (newhash);
-       if ChangeNTLM(server,user,oldhashbyte ,newhashbyte)
-          then log('OK',1)
-          else log('Failed to change',1);
-       end;
-
 end;
 
 begin
