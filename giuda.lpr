@@ -124,8 +124,9 @@ begin
    verbose('Example:',1);
    verbose('-runaslsass => to become SYSTEM',1);
    verbose('-askluids => to get all LUIDs',1);
-   verbose('-gettgs and -luid:0xNNNNN and -msdsspn:HTTP/DCNAME => to get and PASS a tgs',1);
+   verbose('-gettgs -luid:0xNNNNN -msdsspn:HTTP/DCNAME => to get and PASS a tgs',1);
    verbose('-gettgs and -luid:0xNNNNN and -msdsspn:HTTP/DCNAME -save => to get and SAVE a tgs',1);
+   verbose('(if used with -save) -ptt -ticket:ticket.kirbi => pass the ticket',1);
    verbose('Open a Powershell and...',1);
    verbose('[PS] C:\> Enter-PSsession -computername DCNAME',1);
    verbose('Enjoy GIUDA',1);
